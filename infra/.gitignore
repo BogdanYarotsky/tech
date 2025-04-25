@@ -1,0 +1,35 @@
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Terraform plan files
+*.tfplan
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Terraform lock file
+.terraform.lock.hcl
+
+# Terraform temporary directory
+.terraform/
+
+# Exclude sensitive variable files (if you create them)
+# *.tfvars
+# secrets.tfvars
+# terraform.tfvars # Add this line ONLY if you might put secrets in it by mistake
+
+# Mac OS system files
+.DS_Store
+
+# Windows thumbnail cache files
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+
+# IDE directories and files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
