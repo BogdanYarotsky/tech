@@ -8,25 +8,31 @@ using DataLoader;
 using Microsoft.Data.SqlClient;
 
 
-var connectionString = Environment.GetEnvironmentVariable("LOCALDB_URL");
-await using var dbConnection = new SqlConnection(connectionString);
-await using var dbCommand = new SqlCommand("SELECT COUNT(*) FROM dbo.NewTable", dbConnection);
-await dbConnection.OpenAsync();
-var result = await dbCommand.ExecuteScalarAsync();
-Console.WriteLine(result);
+// var connectionString = Environment.GetEnvironmentVariable("LOCALDB_URL");
+// await using var dbConnection = new SqlConnection(connectionString);
+// await using var dbCommand = new SqlCommand("SELECT COUNT(*) FROM dbo.NewTable", dbConnection);
+// await dbConnection.OpenAsync();
+// var result = await dbCommand.ExecuteScalarAsync();
+// Console.WriteLine(result);
 
 
 // var rows = SurveysReader.ReadRowsFromCsv();
 
-// var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-// using var dbConnection = new SqlConnection(connectionString);
+var connectionString = Environment.GetEnvironmentVariable("LOCALDB_URL");
+using var dbConnection = new SqlConnection(connectionString);
 
-// // spin up docker con
-// using var bulkCopy = new SqlBulkCopy(dbConnection)
-// {
-//     DestinationTableName = "todo"
-// };
+// spin up docker con
+using var bulkCopy = new SqlBulkCopy(dbConnection)
+{
+    DestinationTableName = "dbo.NewTable"
+};
 
-// dbConnection.Open();
-// bulkCopy.WriteToServer(new DataTable());
+dbConnection.Open();
+
+var dt = new DataTable();
+dt.Columns.Add(new DataColumn("UserID"));
+dt.Rows.Add(4);
+dt.Rows.Add(8);
+
+bulkCopy.WriteToServer(dt);
 
