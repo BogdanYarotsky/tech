@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Frozen;
+using System.Diagnostics;
 using System.Globalization;
 using CsvHelper;
 using Microsoft.Data.SqlClient;
@@ -10,6 +11,8 @@ using Microsoft.Data.SqlClient;
 // await dbConnection.OpenAsync();
 // var result = await dbCommand.ExecuteScalarAsync();
 // Console.WriteLine(result);
+
+var sw = Stopwatch.StartNew();
 
 var tagsAliases = new Dictionary<string, string>
 {
@@ -53,10 +56,7 @@ var typeOverwrites = new Dictionary<string, TagType>
     {"Spring", TagType.MiscTech}
 }.ToFrozenDictionary();
 
-ConcurrentDictionary<string, bool> allCountries = [];
-
 ConcurrentBag<ProcessedRow> bag = [];
-
 Parallel.For(2021, 2025, year =>
 {
     using var reader = new StreamReader($"/Users/byar/dev/tech/DataLoader/surveys/{year}.csv");
@@ -98,9 +98,6 @@ Parallel.For(2021, 2025, year =>
             country = "Republic of North Macedonia";
         }
 
-        allCountries.TryAdd(country, true);
-
-
         var reportTags = new List<Tag>();
         void AddTags(string columnName, TagType type)
         {
@@ -131,11 +128,7 @@ Parallel.For(2021, 2025, year =>
     }
 });
 
-Console.WriteLine(bag.Count);
-foreach (var t in allCountries.Keys.OrderBy(k => k))
-{
-    Console.WriteLine(t);
-}
+Console.WriteLine(sw.Elapsed);
 
 
 static bool IsNA(string? s) => string.IsNullOrWhiteSpace(s) || s == "NA";
