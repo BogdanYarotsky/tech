@@ -2,32 +2,27 @@ using DataLoader;
 
 public static class TableMapper
 {
-    public static SurveyTables MapToTables(Report[] reports)
+    public static SurveyTables MapToTables(ReadOnlySpan<Report> reports)
     {
         SurveyTables tables = new();
 
-        var countryIds = reports
-            .Select(r => r.Country)
-            .Distinct()
-            .Select((c, i) => (c, i + 1))
-            .ToDictionary();
+        Dictionary<string, int> countryIds = [];
+        Dictionary<Tag, int> tagIds = [];
 
-        foreach (var (name, id) in countryIds)
-            tables.Countries.Rows.Add(id, name);
+        int nextCountryId = 1;
+        int nextTagId = 1;
 
-        var tagIds = reports
-            .SelectMany(r => r.Tags)
-            .Distinct()
-            .Select((t, i) => (t, i + 1))
-            .ToDictionary();
-
-        foreach (var (tag, id) in tagIds)
-            tables.Tags.Rows.Add(id, tag.Name, tag.Type);
-
-        foreach (var (reportIndex, report) in reports.Index())
+        for (int i = 0; i < reports.Length; i++)
         {
-            var reportId = reportIndex + 1;
-            var countryId = countryIds[report.Country];
+            var report = reports[i];
+            var reportId = i + 1;
+
+            if (!countryIds.TryGetValue(report.Country, out int countryId))
+            {
+                countryId = nextCountryId++;
+                countryIds.Add(report.Country, countryId);
+                tables.Countries.Rows.Add(countryId, report.Country);
+            }
 
             tables.Reports.Rows.Add(
                 reportId,
@@ -38,7 +33,12 @@ public static class TableMapper
 
             foreach (var tag in report.Tags)
             {
-                var tagId = tagIds[tag];
+                if (!tagIds.TryGetValue(tag, out int tagId))
+                {
+                    tagId = nextTagId++;
+                    tagIds.Add(tag, tagId);
+                    tables.Tags.Rows.Add(tagId, tag.Name, tag.Type);
+                }
                 tables.ReportsTags.Rows.Add(reportId, tagId);
             }
         }

@@ -1,9 +1,13 @@
 ﻿using System.Data;
+using System.Diagnostics;
 using DataLoader;
 
+var sw = Stopwatch.StartNew();
 var reports = SurveysCsvReader.ReadReports();
 var tables = TableMapper.MapToTables(reports);
+Console.WriteLine(sw.Elapsed);
 Console.WriteLine(tables.ReportsTags.Rows.Count);
+
 
 // var connectionString = Environment.GetEnvironmentVariable("LOCALDB_URL");
 // using var dbConnection = new SqlConnection(connectionString);
