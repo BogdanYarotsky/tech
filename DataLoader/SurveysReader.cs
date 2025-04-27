@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
+using System.Collections.Immutable;
 using System.Globalization;
 using CsvHelper;
 
@@ -7,7 +8,7 @@ namespace DataLoader;
 
 public static class SurveysReader
 {
-    public static IReadOnlyCollection<ProcessedRow> ReadRowsFromCsv()
+    public static Report[] ReadReportsFromCsv()
     {
         var tagsAliases = new Dictionary<string, string>
         {
@@ -51,7 +52,7 @@ public static class SurveysReader
             {"Spring", TagType.MiscTech}
         }.ToFrozenDictionary();
 
-        ConcurrentBag<ProcessedRow> bag = [];
+        ConcurrentBag<Report> bag = [];
         Parallel.For(2021, 2025, year =>
         {
             using var reader = new StreamReader($"/Users/byar/dev/tech/DataLoader/surveys/{year}.csv");
@@ -120,11 +121,11 @@ public static class SurveysReader
                 AddTags("MiscTechHaveWorkedWith", TagType.MiscTech);
                 AddTags("ToolsTechHaveWorkedWith", TagType.Tools);
                 AddTags("NEWCollabToolsHaveWorkedWith", TagType.CollabTools);
-                var row = new ProcessedRow(country, goodYears, goodSalary, tags);
-                bag.Add(row);
+                var report = new Report(country, year, goodYears, goodSalary, tags);
+                bag.Add(report);
             }
         });
-        return bag;
+        return [.. bag];
     }
 
     private static bool IsNA(string? s)
