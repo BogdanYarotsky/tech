@@ -1,6 +1,6 @@
 public record Report(
     string Country,
-    int year,
+    int Year,
     int YearsCoding,
     int YearlySalaryUsd,
     List<Tag> Tags);
