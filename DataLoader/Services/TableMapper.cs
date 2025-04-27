@@ -1,4 +1,4 @@
-using DataLoader;
+namespace DataLoader;
 
 public static class TableMapper
 {
@@ -39,6 +39,7 @@ public static class TableMapper
                     tagIds.Add(tag, tagId);
                     tables.Tags.Rows.Add(tagId, tag.Name, tag.Type);
                 }
+
                 tables.ReportsTags.Rows.Add(reportId, tagId);
             }
         }

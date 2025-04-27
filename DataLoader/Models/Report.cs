@@ -1,4 +1,6 @@
-public record Report(
+using DataLoader;
+
+public record struct Report(
     string Country,
     int Year,
     int YearsCoding,
