@@ -6,9 +6,9 @@ using CsvHelper;
 
 namespace DataLoader;
 
-public static class SurveysCsvReader
+public static class ReportsProducer
 {
-    public static void ReadReports(BlockingCollection<Report> buffer)
+    public static void ReadReportsFromCsv(BlockingCollection<Report> buffer)
     {
         var tagsAliases = new Dictionary<string, string>
         {

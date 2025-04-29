@@ -5,15 +5,12 @@ using System.Threading.Channels;
 using DataLoader;
 
 var sw = Stopwatch.StartNew();
-
-var ch = Channel.CreateUnbounded<Report>();
-
 var tables = new SurveyTables();
 
 {
     using var buffer = new BlockingCollection<Report>();
-    var consumeTask = Task.Run(() => TableMapper.AggregateTables(buffer, tables));
-    SurveysCsvReader.ReadReports(buffer);
+    var consumeTask = Task.Run(() => ReportsConsumer.AggregateTables(buffer, tables));
+    ReportsProducer.ReadReportsFromCsv(buffer);
     buffer.CompleteAdding();
     await consumeTask;
 }

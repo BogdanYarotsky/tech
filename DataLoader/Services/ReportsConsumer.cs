@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 namespace DataLoader;
 
-public static class TableMapper
+public static class ReportsConsumer
 {
     internal static void AggregateTables(BlockingCollection<Report> buffer, SurveyTables tables)
     {
