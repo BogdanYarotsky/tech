@@ -1,6 +1,6 @@
 using DataLoader;
 
-public record struct Report(
+public record Report(
     string Country,
     int Year,
     int YearsCoding,

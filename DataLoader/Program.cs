@@ -1,10 +1,21 @@
-﻿using System.Data;
+﻿using System.Collections.Concurrent;
+using System.Data;
 using System.Diagnostics;
 using DataLoader;
 
 var sw = Stopwatch.StartNew();
-var reports = SurveysCsvReader.ReadReports();
-var tables = TableMapper.MapToTables(reports);
+
+var tables = new SurveyTables();
+
+{
+    using var buffer = new BlockingCollection<Report>();
+    var consumeTask = Task.Run(() => TableMapper.AggregateTables(buffer, tables));
+    SurveysCsvReader.ReadReports(buffer);
+    buffer.CompleteAdding();
+    await consumeTask;
+}
+
+
 Console.WriteLine(sw.Elapsed);
 Console.WriteLine(tables.ReportsTags.Rows.Count);
 

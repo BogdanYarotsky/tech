@@ -8,7 +8,7 @@ namespace DataLoader;
 
 public static class SurveysCsvReader
 {
-    public static Report[] ReadReports()
+    public static void ReadReports(BlockingCollection<Report> buffer)
     {
         var tagsAliases = new Dictionary<string, string>
         {
@@ -52,7 +52,6 @@ public static class SurveysCsvReader
             {"Spring", TagType.MiscTech}
         }.ToFrozenDictionary();
 
-        ConcurrentBag<Report> bag = [];
         Parallel.For(2021, 2025, year =>
         {
             using var reader = new StreamReader($"/Users/byar/dev/tech/DataLoader/surveys/{year}.csv");
@@ -122,10 +121,9 @@ public static class SurveysCsvReader
                 AddTags("ToolsTechHaveWorkedWith", TagType.Tools);
                 AddTags("NEWCollabToolsHaveWorkedWith", TagType.CollabTools);
                 var report = new Report(country, year, goodYears, goodSalary, tags);
-                bag.Add(report);
+                buffer.Add(report);
             }
         });
-        return [.. bag];
     }
 
     private static bool IsNA(string? s)
