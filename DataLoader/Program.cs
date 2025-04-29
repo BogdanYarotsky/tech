@@ -1,9 +1,12 @@
 ﻿using System.Collections.Concurrent;
 using System.Data;
 using System.Diagnostics;
+using System.Threading.Channels;
 using DataLoader;
 
 var sw = Stopwatch.StartNew();
+
+var ch = Channel.CreateUnbounded<Report>();
 
 var tables = new SurveyTables();
 
