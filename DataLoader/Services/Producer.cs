@@ -1,14 +1,13 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
-using System.Collections.Immutable;
 using System.Globalization;
 using CsvHelper;
 
-namespace DataLoader;
+namespace DataLoader.Services;
 
-public static class ReportsProducer
+public static class Producer
 {
-    public static void ReadReportsFromCsv(BlockingCollection<Report> buffer)
+    public static void ReadCsvReportsForYears(int[] years, BlockingCollection<Report> buffer)
     {
         var tagsAliases = new Dictionary<string, string>
         {
@@ -44,17 +43,17 @@ public static class ReportsProducer
 
         var typeOverwrites = new Dictionary<string, TagType>
         {
-            {"Xamarin", TagType.MiscTech},
-            {"Supabase", TagType.Platform},
             {"Deno", TagType.Tools},
+            {"Node.js", TagType.Tools},
+            {"Supabase", TagType.Platform},
             {"Firebase", TagType.Platform},
-            {"Node.js", TagType.WebFramework},
+            {"Xamarin", TagType.MiscTech},
             {"Spring", TagType.MiscTech}
         }.ToFrozenDictionary();
 
-        Parallel.For(2021, 2025, year =>
+        Parallel.ForEach(years, year =>
         {
-            using var reader = new StreamReader($"/Users/byar/dev/tech/DataLoader/surveys/{year}.csv");
+            using var reader = new StreamReader($"surveys/{year}.csv");
             using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
             csv.Read();
             csv.ReadHeader();
@@ -99,7 +98,13 @@ public static class ReportsProducer
                 void AddTags(string columnName, TagType type)
                 {
                     var values = csv.GetField(columnName);
-                    if (IsNA(values)) return;
+
+                    if (string.IsNullOrWhiteSpace(values))
+                        return;
+
+                    if (values == "NA")
+                        return;
+
                     foreach (var value in values!.Split(";"))
                     {
                         var resolvedValue = tagsAliases.TryGetValue(value, out var alias)
@@ -109,10 +114,10 @@ public static class ReportsProducer
                             ? overwrite : type;
 
                         var tag = new Tag(resolvedValue, resolvedType);
-
                         tags.Add(tag);
                     }
                 }
+
                 AddTags("LanguageHaveWorkedWith", TagType.Language);
                 AddTags("DatabaseHaveWorkedWith", TagType.Database);
                 AddTags("PlatformHaveWorkedWith", TagType.Platform);
@@ -120,12 +125,10 @@ public static class ReportsProducer
                 AddTags("MiscTechHaveWorkedWith", TagType.MiscTech);
                 AddTags("ToolsTechHaveWorkedWith", TagType.Tools);
                 AddTags("NEWCollabToolsHaveWorkedWith", TagType.CollabTools);
+
                 var report = new Report(country, year, goodYears, goodSalary, tags);
                 buffer.Add(report);
             }
         });
     }
-
-    private static bool IsNA(string? s)
-        => string.IsNullOrWhiteSpace(s) || s == "NA";
 }

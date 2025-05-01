@@ -1,10 +1,11 @@
 using System.Collections.Concurrent;
+using DataLoader.Models;
 
-namespace DataLoader;
+namespace DataLoader.Services;
 
-public static class ReportsConsumer
+public static class Consumer
 {
-    internal static void AggregateTables(BlockingCollection<Report> buffer, SurveyTables tables)
+    internal static NormalizedReports AggregateNormalizedReports(BlockingCollection<Report> buffer)
     {
         Dictionary<string, int> countryIds = [];
         Dictionary<Tag, int> tagIds = [];
@@ -13,6 +14,7 @@ public static class ReportsConsumer
         int nextTagId = 1;
         int reportId = 1;
 
+        NormalizedReports tables = new();
         foreach (var report in buffer.GetConsumingEnumerable())
         {
             if (!countryIds.TryGetValue(report.Country, out int countryId))
@@ -41,5 +43,6 @@ public static class ReportsConsumer
                 tables.ReportsTags.Rows.Add(reportId, tagId);
             }
         }
+        return tables;
     }
 }

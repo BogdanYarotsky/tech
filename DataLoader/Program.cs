@@ -1,47 +1,51 @@
-﻿using System.Collections.Concurrent;
-using System.Data;
-using System.Diagnostics;
-using System.Threading.Channels;
-using DataLoader;
+﻿using System.Data;
+using System.Text;
+using DataLoader.Services;
+using Microsoft.Data.SqlClient;
 
-var sw = Stopwatch.StartNew();
-var tables = new SurveyTables();
+var tables = await Processor.GetNormalizedReportsTablesFromCsv([2021, 2022, 2023, 2024]);
 
+var connectionString = Environment.GetEnvironmentVariable("LOCALDB_URL");
+using var connection = new SqlConnection(connectionString);
+connection.Open();
+using var tx = connection.BeginTransaction();
+
+var options =
+    SqlBulkCopyOptions.KeepIdentity
+    | SqlBulkCopyOptions.TableLock; // for speed
+
+void BulkWrite(DataTable data, string tableName)
 {
-    using var buffer = new BlockingCollection<Report>();
-    var consumeTask = Task.Run(() => ReportsConsumer.AggregateTables(buffer, tables));
-    ReportsProducer.ReadReportsFromCsv(buffer);
-    buffer.CompleteAdding();
-    await consumeTask;
+    using var bulkCopy = new SqlBulkCopy(connection, options, tx);
+    bulkCopy.DestinationTableName = tableName;
+    foreach (DataColumn column in data.Columns)
+    {
+        bulkCopy.ColumnMappings.Add(
+            column.ColumnName, column.ColumnName);
+    }
+    bulkCopy.WriteToServer(data);
 }
 
+var truncateSql = new StringBuilder();
+foreach (var table in new[] { "ReportsTags", "Reports", "Countries", "Tags", "TagTypes" })
+{
+    truncateSql.AppendLine($"TRUNCATE TABLE dbo.{table};");
+}
 
-Console.WriteLine(sw.Elapsed);
-Console.WriteLine(tables.ReportsTags.Rows.Count);
+try
+{
+    using var truncateCmd = new SqlCommand(truncateSql.ToString(), connection, tx);
+    truncateCmd.ExecuteNonQuery();
 
-
-// var connectionString = Environment.GetEnvironmentVariable("LOCALDB_URL");
-// using var dbConnection = new SqlConnection(connectionString);
-// dbConnection.Open();
-
-// // ensure tables are created and empty
-// // using var dbCommand = new SqlCommand("", dbConnection);
-// // dbCommand.ExecuteNonQuery();
-
-// using var tx = dbConnection.BeginTransaction();
-// try
-// {
-//     using var bulkCopy = new SqlBulkCopy(dbConnection, SqlBulkCopyOptions.KeepIdentity, tx);
-//     bulkCopy.DestinationTableName = "dbo.NewTable";
-//     var dt = new DataTable();
-//     dt.Columns.AddRange([new("UserID")]);
-//     dt.Rows.Add(666);
-//     dt.Rows.Add(777);
-//     bulkCopy.WriteToServer(dt);
-//     tx.Commit();
-// }
-// catch
-// {
-//     tx.Rollback();
-//     throw;
-// }
+    BulkWrite(tables.TagTypes, "TagTypes");
+    BulkWrite(tables.Tags, "Tags");
+    BulkWrite(tables.Countries, "Countries");
+    BulkWrite(tables.Reports, "Reports");
+    BulkWrite(tables.ReportsTags, "ReportsTags");
+    tx.Commit();
+}
+catch
+{
+    tx.Rollback();
+    throw;
+}
