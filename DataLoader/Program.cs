@@ -1,10 +1,13 @@
 ﻿using System.Data;
+using System.Diagnostics;
 using System.Text;
 using DataLoader.Services;
 using Microsoft.Data.SqlClient;
 
-var tables = await Processor.GetNormalizedReportsTablesFromCsv([2021, 2022, 2023, 2024]);
-
+var sw = Stopwatch.StartNew();
+var tables = await Processor.GetNormalizedSalaryReportsAsync();
+Console.WriteLine(sw.Elapsed);
+return;
 var connectionString = Environment.GetEnvironmentVariable("LOCALDB_URL");
 using var connection = new SqlConnection(connectionString);
 connection.Open();

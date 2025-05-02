@@ -1,13 +1,31 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Globalization;
+using System.Threading.Channels;
 using CsvHelper;
 
 namespace DataLoader.Services;
 
 public static class Producer
 {
-    public static void ReadCsvReportsForYears(int[] years, BlockingCollection<Report> buffer)
+    private class CsvRow
+    {
+        public string? MainBranch { get; set; }
+        public string? Employment { get; set; }
+        public string? ConvertedCompYearly { get; set; }
+        public string? YearsCodePro { get; set; }
+        public string? Country { get; set; }
+        public string? DevType { get; set; }
+        public string? LanguageHaveWorkedWith { get; set; }
+        public string? DatabaseHaveWorkedWith { get; set; }
+        public string? PlatformHaveWorkedWith { get; set; }
+        public string? WebframeHaveWorkedWith { get; set; }
+        public string? MiscTechHaveWorkedWith { get; set; }
+        public string? ToolsTechHaveWorkedWith { get; set; }
+        public string? NEWCollabToolsHaveWorkedWith { get; set; }
+    }
+
+    public static async Task ReadSalaryReporsAsync(ChannelWriter<Report> writer)
     {
         var tagsAliases = new Dictionary<string, string>
         {
@@ -41,7 +59,7 @@ public static class Producer
             {"Scikit-learn", "Scikit-Learn"}
         }.ToFrozenDictionary();
 
-        var typeOverwrites = new Dictionary<string, TagType>
+        var correctTagTypes = new Dictionary<string, TagType>
         {
             {"Deno", TagType.Tools},
             {"Node.js", TagType.Tools},
@@ -51,66 +69,58 @@ public static class Producer
             {"Spring", TagType.MiscTech}
         }.ToFrozenDictionary();
 
-        Parallel.ForEach(years, year =>
+        var tasks = Enumerable.Range(2021, 4).Select(async year =>
         {
             using var reader = new StreamReader($"surveys/{year}.csv");
             using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
-            csv.Read();
-            csv.ReadHeader();
-            while (csv.Read())
+            await foreach (var row in csv.GetRecordsAsync<CsvRow>())
             {
-                if (!csv.GetField("MainBranch")!.StartsWith("I am a dev"))
-                    continue;
-
-                if (!csv.GetField("Employment")!.EndsWith("full-time"))
-                    continue;
-
-                var salary = csv.GetField("ConvertedCompYearly");
-                if (!int.TryParse(salary, out var goodSalary))
+                if (row.ConvertedCompYearly == "NA")
                 {
                     continue;
                 }
 
-                var yearsCoding = csv.GetField("YearsCodePro")!;
-                if (!int.TryParse(yearsCoding, out var goodYears))
+                var YearlySalaryUsd = int.Parse(row.ConvertedCompYearly!);
+
+                if (row.YearsCodePro == "NA")
                 {
-                    if (yearsCoding.StartsWith("More"))
+                    continue;
+                }
+
+                if (!int.TryParse(row.YearsCodePro, out var yearsCoding))
+                {
+                    if (row.YearsCodePro.StartsWith("More"))
                     {
-                        goodYears = 51;
+                        yearsCoding = 51;
                     }
-                    else if (!yearsCoding.StartsWith("Less"))
+                    else if (!row.YearsCodePro.StartsWith("Less"))
                     {
                         continue;
                     }
                 }
 
-                var country = csv.GetField("Country")!;
-                if (country == "Republic of Korea")
+                var country = row.Country switch
                 {
-                    country = "South Korea";
-                }
-                else if (country == "The former Yugoslav Republic of Macedonia")
-                {
-                    country = "Republic of North Macedonia";
-                }
+                    "Republic of Korea" => "South Korea",
+                    "The former Yugoslav Republic of Macedonia" => "Republic of North Macedonia",
+                    _ => row.Country
+                };
 
                 var tags = new List<Tag>();
-                void AddTags(string columnName, TagType type)
+                void AddTags(string? values, TagType type)
                 {
-                    var values = csv.GetField(columnName);
-
                     if (string.IsNullOrWhiteSpace(values))
                         return;
 
                     if (values == "NA")
                         return;
 
-                    foreach (var value in values!.Split(";"))
+                    foreach (var value in values.Split(";"))
                     {
                         var resolvedValue = tagsAliases.TryGetValue(value, out var alias)
                             ? alias : value;
 
-                        var resolvedType = typeOverwrites.TryGetValue(resolvedValue, out var overwrite)
+                        var resolvedType = correctTagTypes.TryGetValue(resolvedValue, out var overwrite)
                             ? overwrite : type;
 
                         var tag = new Tag(resolvedValue, resolvedType);
@@ -118,17 +128,21 @@ public static class Producer
                     }
                 }
 
-                AddTags("LanguageHaveWorkedWith", TagType.Language);
-                AddTags("DatabaseHaveWorkedWith", TagType.Database);
-                AddTags("PlatformHaveWorkedWith", TagType.Platform);
-                AddTags("WebframeHaveWorkedWith", TagType.WebFramework);
-                AddTags("MiscTechHaveWorkedWith", TagType.MiscTech);
-                AddTags("ToolsTechHaveWorkedWith", TagType.Tools);
-                AddTags("NEWCollabToolsHaveWorkedWith", TagType.CollabTools);
+                AddTags(row.DevType, TagType.DevType);
+                AddTags(row.LanguageHaveWorkedWith, TagType.Language);
+                AddTags(row.DatabaseHaveWorkedWith, TagType.Database);
+                AddTags(row.WebframeHaveWorkedWith, TagType.WebFramework);
+                AddTags(row.ToolsTechHaveWorkedWith, TagType.Tools);
+                AddTags(row.NEWCollabToolsHaveWorkedWith, TagType.CollabTools);
+                AddTags(row.PlatformHaveWorkedWith, TagType.Platform);
+                AddTags(row.MiscTechHaveWorkedWith, TagType.MiscTech);
+                AddTags(row.DevType, TagType.DevType);
 
-                var report = new Report(country, year, goodYears, goodSalary, tags);
-                buffer.Add(report);
+                var report = new Report(country!, year, yearsCoding, YearlySalaryUsd, tags);
+                writer.TryWrite(report);
             }
         });
+
+        await Task.WhenAll(tasks);
     }
 }

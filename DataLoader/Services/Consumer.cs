@@ -1,14 +1,16 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
+using System.Threading.Channels;
 using DataLoader.Models;
 
 namespace DataLoader.Services;
 
 public static class Consumer
 {
-    internal static NormalizedReports AggregateNormalizedReports(BlockingCollection<Report> buffer)
+    internal static async Task<NormalizedReportTables> GetNormalizedTablesAsync(
+        ChannelReader<Report> reader)
     {
-        NormalizedReports tables = new();
+        NormalizedReportTables tables = new();
 
         var tagTypeIds = Enum
             .GetValues<TagType>()
@@ -17,9 +19,9 @@ public static class Consumer
                 e => (int)e + 1
             );
 
-        foreach (var (tagTypeName, tagTypeId) in tagTypeIds)
+        foreach (var (tagType, tagTypeId) in tagTypeIds)
         {
-            tables.TagTypes.Rows.Add(tagTypeId, tagTypeName);
+            tables.TagTypes.Rows.Add(tagTypeId, tagType.ToString());
         }
 
         Dictionary<string, int> countryIds = [];
@@ -29,7 +31,7 @@ public static class Consumer
         int nextTagId = 1;
         int reportId = 1;
 
-        foreach (var report in buffer.GetConsumingEnumerable())
+        await foreach (var report in reader.ReadAllAsync())
         {
             if (!countryIds.TryGetValue(report.Country, out int countryId))
             {

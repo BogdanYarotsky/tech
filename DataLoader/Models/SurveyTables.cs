@@ -2,7 +2,7 @@ using System.Data;
 
 namespace DataLoader.Models;
 
-public record NormalizedReports
+public record NormalizedReportTables
 {
     public DataTable Countries { get; } = Table(["CountryID", "CountryName"]);
     public DataTable Tags { get; } = Table(["TagID", "TagName", "TagTypeID"]);
