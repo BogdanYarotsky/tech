@@ -4,9 +4,15 @@ using System.Text;
 using DataLoader.Services;
 using Microsoft.Data.SqlClient;
 
-var sw = Stopwatch.StartNew();
-var tables = await Processor.GetNormalizedSalaryReportsAsync();
-Console.WriteLine(sw.Elapsed);
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, args) => 
+{
+    cts.Cancel();
+    args.Cancel = true;
+};
+
+var sqlTables = await Processor.GetSalaryReportsSqlTablesAsync(cts.Token);
+
 return;
 var connectionString = Environment.GetEnvironmentVariable("LOCALDB_URL");
 using var connection = new SqlConnection(connectionString);
@@ -40,11 +46,11 @@ try
     using var truncateCmd = new SqlCommand(truncateSql.ToString(), connection, tx);
     truncateCmd.ExecuteNonQuery();
 
-    BulkWrite(tables.TagTypes, "TagTypes");
-    BulkWrite(tables.Tags, "Tags");
-    BulkWrite(tables.Countries, "Countries");
-    BulkWrite(tables.Reports, "Reports");
-    BulkWrite(tables.ReportsTags, "ReportsTags");
+    // BulkWrite(tables.TagTypes, "TagTypes");
+    // BulkWrite(tables.Tags, "Tags");
+    // BulkWrite(tables.Countries, "Countries");
+    // BulkWrite(tables.Reports, "Reports");
+    // BulkWrite(tables.ReportsTags, "ReportsTags");
     tx.Commit();
 }
 catch

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Globalization;
 using System.Threading.Channels;
@@ -8,24 +7,7 @@ namespace DataLoader.Services;
 
 public static class Producer
 {
-    private class CsvRow
-    {
-        public string? MainBranch { get; set; }
-        public string? Employment { get; set; }
-        public string? ConvertedCompYearly { get; set; }
-        public string? YearsCodePro { get; set; }
-        public string? Country { get; set; }
-        public string? DevType { get; set; }
-        public string? LanguageHaveWorkedWith { get; set; }
-        public string? DatabaseHaveWorkedWith { get; set; }
-        public string? PlatformHaveWorkedWith { get; set; }
-        public string? WebframeHaveWorkedWith { get; set; }
-        public string? MiscTechHaveWorkedWith { get; set; }
-        public string? ToolsTechHaveWorkedWith { get; set; }
-        public string? NEWCollabToolsHaveWorkedWith { get; set; }
-    }
-
-    public static async Task ReadSalaryReporsAsync(ChannelWriter<Report> writer)
+    public static void ReadSalaryReportsInParallel(ChannelWriter<Report> writer, CancellationToken cancellationToken)
     {
         var tagsAliases = new Dictionary<string, string>
         {
@@ -69,53 +51,61 @@ public static class Producer
             {"Spring", TagType.MiscTech}
         }.ToFrozenDictionary();
 
-        var tasks = Enumerable.Range(2021, 4).Select(async year =>
+        Parallel.For(2021, 2025, year =>
         {
             using var reader = new StreamReader($"surveys/{year}.csv");
             using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
-            await foreach (var row in csv.GetRecordsAsync<CsvRow>())
+            csv.Read();
+            csv.ReadHeader();
+            while (csv.Read())
             {
-                if (row.ConvertedCompYearly == "NA")
+                if (!csv.GetField("MainBranch")!.StartsWith("I am a dev"))
+                    continue;
+
+                if (!csv.GetField("Employment")!.EndsWith("full-time"))
+                    continue;
+
+                var convertedCompYearly = csv.GetField("ConvertedCompYearly");
+                if (!int.TryParse(convertedCompYearly, out var yearlySalaryUsd))
                 {
                     continue;
                 }
 
-                var YearlySalaryUsd = int.Parse(row.ConvertedCompYearly!);
-
-                if (row.YearsCodePro == "NA")
+                var yearsCodePro = csv.GetField("YearsCodePro")!;
+                if (!int.TryParse(yearsCodePro, out var yearsCoding))
                 {
-                    continue;
-                }
-
-                if (!int.TryParse(row.YearsCodePro, out var yearsCoding))
-                {
-                    if (row.YearsCodePro.StartsWith("More"))
+                    if (yearsCodePro.StartsWith("More"))
                     {
                         yearsCoding = 51;
                     }
-                    else if (!row.YearsCodePro.StartsWith("Less"))
+                    else if (!yearsCodePro.StartsWith("Less"))
                     {
                         continue;
                     }
                 }
 
-                var country = row.Country switch
+                var country = csv.GetField("Country")!;
+                if (country == "Republic of Korea")
                 {
-                    "Republic of Korea" => "South Korea",
-                    "The former Yugoslav Republic of Macedonia" => "Republic of North Macedonia",
-                    _ => row.Country
-                };
+                    country = "South Korea";
+                }
+                else if (country == "The former Yugoslav Republic of Macedonia")
+                {
+                    country = "Republic of North Macedonia";
+                }
 
                 var tags = new List<Tag>();
-                void AddTags(string? values, TagType type)
+                void AddTags(string columnName, TagType type)
                 {
+                    var values = csv.GetField(columnName);
+
                     if (string.IsNullOrWhiteSpace(values))
                         return;
 
                     if (values == "NA")
                         return;
 
-                    foreach (var value in values.Split(";"))
+                    foreach (var value in values!.Split(";"))
                     {
                         var resolvedValue = tagsAliases.TryGetValue(value, out var alias)
                             ? alias : value;
@@ -128,21 +118,18 @@ public static class Producer
                     }
                 }
 
-                AddTags(row.DevType, TagType.DevType);
-                AddTags(row.LanguageHaveWorkedWith, TagType.Language);
-                AddTags(row.DatabaseHaveWorkedWith, TagType.Database);
-                AddTags(row.WebframeHaveWorkedWith, TagType.WebFramework);
-                AddTags(row.ToolsTechHaveWorkedWith, TagType.Tools);
-                AddTags(row.NEWCollabToolsHaveWorkedWith, TagType.CollabTools);
-                AddTags(row.PlatformHaveWorkedWith, TagType.Platform);
-                AddTags(row.MiscTechHaveWorkedWith, TagType.MiscTech);
-                AddTags(row.DevType, TagType.DevType);
+                AddTags("DevType", TagType.DevType);
+                AddTags("LanguageHaveWorkedWith", TagType.Language);
+                AddTags("DatabaseHaveWorkedWith", TagType.Database);
+                AddTags("PlatformHaveWorkedWith", TagType.Platform);
+                AddTags("WebframeHaveWorkedWith", TagType.WebFramework);
+                AddTags("MiscTechHaveWorkedWith", TagType.MiscTech);
+                AddTags("ToolsTechHaveWorkedWith", TagType.Tools);
+                AddTags("NEWCollabToolsHaveWorkedWith", TagType.CollabTools);
+                var report = new Report(country, year, yearsCoding, yearlySalaryUsd, tags);
 
-                var report = new Report(country!, year, yearsCoding, YearlySalaryUsd, tags);
                 writer.TryWrite(report);
             }
         });
-
-        await Task.WhenAll(tasks);
     }
 }

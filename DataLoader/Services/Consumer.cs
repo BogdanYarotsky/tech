@@ -1,16 +1,41 @@
-using System.Collections.Concurrent;
 using System.Collections.Frozen;
+using System.Data;
 using System.Threading.Channels;
-using DataLoader.Models;
 
 namespace DataLoader.Services;
 
 public static class Consumer
 {
-    internal static async Task<NormalizedReportTables> GetNormalizedTablesAsync(
-        ChannelReader<Report> reader)
+    internal static async Task<DataTable[]> GetSqlTablesAsync(ChannelReader<Report> reader, CancellationToken cancellationToken)
     {
-        NormalizedReportTables tables = new();
+        var tagTypes = CreateTable("TagTypes", [
+            ("TagTypeID", typeof(int)),
+            ("TagTypeName", typeof(string))
+        ]);
+
+        var tags = CreateTable("Tags", [
+            ("TagID", typeof(int)),
+            ("TagName", typeof(string)),
+            ("TagTypeID", typeof(int))
+        ]);
+
+        var countries = CreateTable("Countries", [
+            ("CountryID", typeof(int)),
+            ("CountryName", typeof(string))
+        ]);
+
+        var reports = CreateTable("Reports", [
+            ("ReportID", typeof(int)),
+            ("CountryID", typeof(int)),
+            ("Year", typeof(int)),
+            ("YearsCoding", typeof(int)),
+            ("YearlySalaryUSD", typeof(int))
+        ]);
+
+        var reportsTags = CreateTable("ReportsTags", [
+            ("ReportID", typeof(int)),
+            ("TagID", typeof(int))
+        ]);
 
         var tagTypeIds = Enum
             .GetValues<TagType>()
@@ -21,7 +46,7 @@ public static class Consumer
 
         foreach (var (tagType, tagTypeId) in tagTypeIds)
         {
-            tables.TagTypes.Rows.Add(tagTypeId, tagType.ToString());
+            tagTypes.Rows.Add(tagTypeId, tagType.ToString());
         }
 
         Dictionary<string, int> countryIds = [];
@@ -31,16 +56,16 @@ public static class Consumer
         int nextTagId = 1;
         int reportId = 1;
 
-        await foreach (var report in reader.ReadAllAsync())
+        await foreach (var report in reader.ReadAllAsync(cancellationToken))
         {
             if (!countryIds.TryGetValue(report.Country, out int countryId))
             {
                 countryId = nextCountryId++;
                 countryIds.Add(report.Country, countryId);
-                tables.Countries.Rows.Add(countryId, report.Country);
+                countries.Rows.Add(countryId, report.Country);
             }
 
-            tables.Reports.Rows.Add(
+            reports.Rows.Add(
                 reportId,
                 countryId,
                 report.Year,
@@ -54,14 +79,25 @@ public static class Consumer
                     tagId = nextTagId++;
                     tagIds.Add(tag, tagId);
                     var tagTypeId = tagTypeIds[tag.Type];
-                    tables.Tags.Rows.Add(tagId, tag.Name, tagTypeId);
+                    tags.Rows.Add(tagId, tag.Name, tagTypeId);
                 }
 
-                tables.ReportsTags.Rows.Add(reportId, tagId);
+                reportsTags.Rows.Add(reportId, tagId);
             }
 
             reportId++;
         }
-        return tables;
+
+        return [tagTypes, tags, countries, reports, reportsTags];
+    }
+
+    private static DataTable CreateTable(string name, (string Name, Type Type)[] columns)
+    {
+        DataTable dt = new(name);
+
+        foreach (var c in columns)
+            dt.Columns.Add(c.Name, c.Type);
+
+        return dt;
     }
 }
