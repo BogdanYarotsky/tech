@@ -21,7 +21,7 @@ try
         return;
     }
     var tables = await Processor.GetSalaryReportsSqlTablesAsync(cts.Token);
-    Writer.BulkCopyToCleanedTablesAsync(connectionString, tables, cts.Token);
+    await Writer.BulkCopyToCleanedTablesAsync(connectionString, tables, cts.Token);
 }
 catch (OperationCanceledException)
 {

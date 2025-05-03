@@ -3,6 +3,7 @@ version: "3.8"
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
     container_name: mssql_server_dev
     environment:
       ACCEPT_EULA: "Y"
@@ -11,4 +12,8 @@ services:
     ports:
       - "1433:1433"
     volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - sqlserver_data:/var/opt/mssql
+
+volumes:
+  sqlserver_data:
+    driver: local

@@ -38,7 +38,8 @@ public static class Producer
             {"Oracle Cloud Infrastructure (OCI)", "Oracle Cloud Infrastructure"},
             {"PHPStorm", "PhpStorm"},
             {"Rad Studio (Delphi, C++ Builder)", "RAD Studio (Delphi, C++ Builder)"},
-            {"Scikit-learn", "Scikit-Learn"}
+            {"Scikit-learn", "Scikit-Learn"},
+            {"Cobol", "COBOL"}
         }.ToFrozenDictionary();
 
         var correctTagTypes = new Dictionary<string, TagType>

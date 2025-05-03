@@ -25,14 +25,16 @@ namespace DataLoader.Database
                     bulkCopy.ColumnMappings.Add(
                         column.ColumnName, column.ColumnName);
                 }
+                Console.WriteLine("Writing to table " + bulkCopy.DestinationTableName);
                 await bulkCopy.WriteToServerAsync(dt, cancellationToken);
             }
 
             try
             {
-                var truncateSql = string.Join(";", tables.Select(t => $"TRUNCATE TABLE {t.TableName}"));
-                using var truncateCmd = new SqlCommand(truncateSql, connection, transaction);
-                await truncateCmd.ExecuteNonQueryAsync(cancellationToken);
+                // var truncateSql = string.Join(";", tables.Reverse().Select(t => $"TRUNCATE TABLE {t.TableName}"));
+                // Console.WriteLine(truncateSql);
+                // using var truncateCmd = new SqlCommand(truncateSql, connection, transaction);
+                // await truncateCmd.ExecuteNonQueryAsync(cancellationToken);
                 foreach (var table in tables)
                 {
                     await WriteAsync(table);
