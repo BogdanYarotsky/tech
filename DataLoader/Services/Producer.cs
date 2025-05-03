@@ -59,6 +59,9 @@ public static class Producer
             csv.ReadHeader();
             while (csv.Read())
             {
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
                 if (!csv.GetField("MainBranch")!.StartsWith("I am a dev"))
                     continue;
 

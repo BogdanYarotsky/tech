@@ -1,60 +1,31 @@
 ﻿using System.Data;
-using System.Diagnostics;
 using System.Text;
+using DataLoader.Database;
 using DataLoader.Services;
 using Microsoft.Data.SqlClient;
 
+var connectionString = Environment.GetEnvironmentVariable("DB_CONN_STR");
+ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 using var cts = new CancellationTokenSource();
-Console.CancelKeyPress += (_, args) => 
+Console.CancelKeyPress += (_, args) =>
 {
     cts.Cancel();
     args.Cancel = true;
 };
-
-var sqlTables = await Processor.GetSalaryReportsSqlTablesAsync(cts.Token);
-
-return;
-var connectionString = Environment.GetEnvironmentVariable("LOCALDB_URL");
-using var connection = new SqlConnection(connectionString);
-connection.Open();
-using var tx = connection.BeginTransaction();
-
-var options =
-    SqlBulkCopyOptions.KeepIdentity
-    | SqlBulkCopyOptions.TableLock; // for speed
-
-void BulkWrite(DataTable data, string tableName)
-{
-    using var bulkCopy = new SqlBulkCopy(connection, options, tx);
-    bulkCopy.DestinationTableName = tableName;
-    foreach (DataColumn column in data.Columns)
-    {
-        bulkCopy.ColumnMappings.Add(
-            column.ColumnName, column.ColumnName);
-    }
-    bulkCopy.WriteToServer(data);
-}
-
-var truncateSql = new StringBuilder();
-foreach (var table in new[] { "ReportsTags", "Reports", "Countries", "Tags", "TagTypes" })
-{
-    truncateSql.AppendLine($"TRUNCATE TABLE dbo.{table};");
-}
-
 try
 {
-    using var truncateCmd = new SqlCommand(truncateSql.ToString(), connection, tx);
-    truncateCmd.ExecuteNonQuery();
-
-    // BulkWrite(tables.TagTypes, "TagTypes");
-    // BulkWrite(tables.Tags, "Tags");
-    // BulkWrite(tables.Countries, "Countries");
-    // BulkWrite(tables.Reports, "Reports");
-    // BulkWrite(tables.ReportsTags, "ReportsTags");
-    tx.Commit();
+    // ensure migrations are there already
+    Migrator.EnsureDatabaseInGoodShape(connectionString, cts.Token);
+    if (args.Contains("--migrate-only"))
+    {
+        return;
+    }
+    var tables = await Processor.GetSalaryReportsSqlTablesAsync(cts.Token);
+    Writer.BulkCopyToCleanedTablesAsync(connectionString, tables, cts.Token);
 }
-catch
+catch (OperationCanceledException)
 {
-    tx.Rollback();
-    throw;
 }
+
+return;
+// var connectionString = Environment.GetEnvironmentVariable("LOCALDB_URL");
