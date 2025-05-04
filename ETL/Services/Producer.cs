@@ -46,7 +46,6 @@ public static class Producer
         {
             {"Deno", TagType.Tools},
             {"Node.js", TagType.Tools},
-            {"Supabase", TagType.Platform},
             {"Firebase", TagType.Platform},
             {"Xamarin", TagType.MiscTech},
             {"Spring", TagType.MiscTech}
@@ -131,7 +130,6 @@ public static class Producer
                 AddTags("ToolsTechHaveWorkedWith", TagType.Tools);
                 AddTags("NEWCollabToolsHaveWorkedWith", TagType.CollabTools);
                 var report = new Report(country, year, yearsCoding, yearlySalaryUsd, tags);
-
                 writer.TryWrite(report);
             }
         });
