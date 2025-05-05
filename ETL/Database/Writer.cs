@@ -8,9 +8,11 @@ namespace DataLoader.Database
         internal static async Task BulkCopyToCleanedTablesAsync(
             string connectionString, DataTable[] tables, CancellationToken cancellationToken)
         {
+            Console.WriteLine("Trying to connect to database...");
             await using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync(cancellationToken);
             await using var transaction = connection.BeginTransaction();
+            Console.WriteLine("Connected to db, started a transaction");
 
             var options =
                 SqlBulkCopyOptions.KeepIdentity

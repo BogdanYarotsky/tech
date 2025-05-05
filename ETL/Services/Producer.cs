@@ -53,7 +53,9 @@ public static class Producer
 
         Parallel.For(2021, 2025, year =>
         {
-            using var reader = new StreamReader($"surveys/{year}.csv");
+            string path = $"surveys/{year}.csv";
+            Console.WriteLine($"Reading survey {path}");
+            using var reader = new StreamReader(path);
             using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
             csv.Read();
             csv.ReadHeader();
@@ -132,6 +134,7 @@ public static class Producer
                 var report = new Report(country, year, yearsCoding, yearlySalaryUsd, tags);
                 writer.TryWrite(report);
             }
+            Console.WriteLine($"Finished reading survey {path}");
         });
     }
 }

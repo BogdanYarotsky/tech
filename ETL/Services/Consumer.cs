@@ -88,6 +88,7 @@ public static class Consumer
             reportId++;
         }
 
+        Console.WriteLine("Finished aggregating SQL tables from reports");
         return [tagTypes, tags, countries, reports, reportsTags];
     }
 
