@@ -11,7 +11,7 @@ JOIN TagTypes ON TagTypes.TagTypeID = Tags.TagTypeID
 WHERE 
 
 CountryName = 'Germany' 
-AND TagTypeName = 'DevType' 
+AND TagTypeName != 'DevType' 
 -- AND YearsCoding = 4
 
 ORDER BY Median DESC;
