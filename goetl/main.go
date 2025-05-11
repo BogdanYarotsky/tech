@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -90,13 +89,13 @@ func main() {
 		reports = append(reports, r)
 	}
 
-	goTag := Tag{"Go", Language}
+	// goTag := Tag{"Go", Language}
 
-	for _, r := range reports {
-		if slices.Contains(r.Tags, goTag) {
-			// goreports = append(goreports, r)
-		}
-	}
+	// for _, r := range reports {
+	// 	if slices.Contains(r.Tags, goTag) {
+	// 		// goreports = append(goreports, r)
+	// 	}
+	// }
 
 	println(len(reports))
 
