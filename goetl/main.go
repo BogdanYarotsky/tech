@@ -179,6 +179,7 @@ func parseReports(csvPath string, ch chan<- Report) {
 		}
 
 		report := Report{
+			Country:     country,
 			YearsCoding: yearsCoding,
 			Salary:      salary,
 			Tags:        tags,
