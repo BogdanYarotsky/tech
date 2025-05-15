@@ -48,8 +48,22 @@ public static class Producer
             {"Node.js", TagType.Tools},
             {"Firebase", TagType.Platform},
             {"Xamarin", TagType.MiscTech},
-            {"Spring", TagType.MiscTech}
+            {"Spring", TagType.MiscTech},
+            {"Supabase", TagType.Platform},
+            {"Flow", TagType.Tools}
         }.ToFrozenDictionary();
+
+        var columnTypes = new[]
+        {
+            ("DevType", TagType.DevType),
+            ("LanguageHaveWorkedWith", TagType.Language),
+            ("DatabaseHaveWorkedWith", TagType.Database),
+            ("PlatformHaveWorkedWith", TagType.Platform),
+            ("WebframeHaveWorkedWith", TagType.WebFramework),
+            ("MiscTechHaveWorkedWith", TagType.MiscTech),
+            ("ToolsTechHaveWorkedWith", TagType.Tools),
+            ("NEWCollabToolsHaveWorkedWith", TagType.CollabTools)
+        };
 
         Parallel.For(2021, 2025, year =>
         {
@@ -72,6 +86,11 @@ public static class Producer
 
                 var convertedCompYearly = csv.GetField("ConvertedCompYearly");
                 if (!int.TryParse(convertedCompYearly, out var yearlySalaryUsd))
+                {
+                    continue;
+                }
+
+                if (yearlySalaryUsd < 2_500 || yearlySalaryUsd > 1_000_000)
                 {
                     continue;
                 }
@@ -100,10 +119,10 @@ public static class Producer
                 }
 
                 var tags = new List<Tag>();
+
                 void AddTags(string columnName, TagType type)
                 {
                     var values = csv.GetField(columnName);
-
                     if (string.IsNullOrWhiteSpace(values))
                         return;
 

@@ -2,7 +2,6 @@ namespace DataLoader;
 
 public enum TagType
 {
-    None,
     DevType,
     Language,
     Database,

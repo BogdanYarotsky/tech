@@ -4,9 +4,9 @@ using System.Threading.Channels;
 
 namespace DataLoader.Services;
 
-public static class Consumer
+public class TransformerToSqlTables : ITransformer<DataTable[]>
 {
-    internal static async Task<DataTable[]> GetSqlTablesAsync(ChannelReader<Report> reader, CancellationToken cancellationToken)
+    public async Task<DataTable[]> TransformAsync(ChannelReader<Report> reader, CancellationToken cancellationToken)
     {
         var tagTypes = CreateTable("TagTypes", [
             ("TagTypeID", typeof(int)),
@@ -88,7 +88,6 @@ public static class Consumer
             reportId++;
         }
 
-        Console.WriteLine("Finished aggregating SQL tables from reports");
         return [tagTypes, tags, countries, reports, reportsTags];
     }
 

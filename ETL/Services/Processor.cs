@@ -2,16 +2,23 @@ using System.Data;
 using System.Threading.Channels;
 
 namespace DataLoader.Services;
-public static class Processor
+
+public interface ITransformer<T>
 {
-    public static async Task<DataTable[]> GetSalaryReportsSqlTablesAsync(CancellationToken cancellationToken)
+    Task<T> TransformAsync(ChannelReader<Report> reader, CancellationToken cancellationToken);
+}
+
+public class Processor<T>(ITransformer<T> transformer)
+{
+    private readonly ITransformer<T> transformer = transformer;
+    public async Task<T> TransformSalaryReportsAsync(CancellationToken cancellationToken)
     {
         var channel = Channel.CreateUnbounded<Report>(new()
         {
+            SingleWriter = false,
             SingleReader = true,
-            SingleWriter = false
         });
-        var consumerTask = Consumer.GetSqlTablesAsync(channel.Reader, cancellationToken);
+        var consumerTask = transformer.TransformAsync(channel.Reader, cancellationToken);
         Producer.ReadSalaryReportsInParallel(channel.Writer, cancellationToken);
         channel.Writer.Complete();
         return await consumerTask;
