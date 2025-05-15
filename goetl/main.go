@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -68,11 +71,10 @@ var csvFiles = [...]string{
 
 func main() {
 	ch := make(chan Report)
-
 	var wg sync.WaitGroup
-	wg.Add(len(csvFiles))
 
 	for _, f := range csvFiles {
+		wg.Add(1)
 		go func(filename string) {
 			defer wg.Done()
 			parseReports(f, ch)
@@ -84,25 +86,22 @@ func main() {
 		close(ch)
 	}()
 
-	var reports []Report
+	goTag := Tag{"Go", Language}
+	tagsCounter := make(map[Tag]int)
+
 	for r := range ch {
-		reports = append(reports, r)
+		if r.Salary > 75000 &&
+			r.Country == "Germany" &&
+			slices.Contains(r.Tags, goTag) {
+			{
+				for _, t := range r.Tags {
+					tagsCounter[t]++
+				}
+			}
+		}
 	}
 
-	// goTag := Tag{"Go", Language}
-
-	// for _, r := range reports {
-	// 	if slices.Contains(r.Tags, goTag) {
-	// 		// goreports = append(goreports, r)
-	// 	}
-	// }
-
-	println(len(reports))
-
-	// sort.Slice(goreports, func(i, j int) bool {
-	// 	return goreports[i].Salary < goreports[j].Salary
-	// })
-
+	PrettyPrint(tagsCounter)
 }
 
 func parseReports(csvPath string, ch chan<- Report) {
@@ -192,5 +191,30 @@ func parseReports(csvPath string, ch chan<- Report) {
 func check(err error, message string) {
 	if err != nil {
 		log.Fatal(message, err)
+	}
+}
+
+func PrettyPrint(c map[Tag]int) {
+	// Convert map to slice of key-value pairs
+	type kv struct {
+		Key   Tag
+		Value int
+	}
+
+	pairs := make([]kv, 0, len(c))
+	for k, v := range c {
+		pairs = append(pairs, kv{k, v})
+	}
+
+	// Sort by value in descending order
+	sort.Slice(pairs, func(i, j int) bool {
+		return pairs[i].Value < pairs[j].Value
+	})
+
+	// Print sorted pairs
+	fmt.Println("Count | Item")
+	fmt.Println("------+-------")
+	for _, pair := range pairs {
+		fmt.Printf("%5d | %v\n", pair.Value, pair.Key.Name)
 	}
 }
