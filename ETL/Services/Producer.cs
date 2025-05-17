@@ -65,9 +65,9 @@ public static class Producer
             ("NEWCollabToolsHaveWorkedWith", TagType.CollabTools)
         };
 
-        Parallel.For(2021, 2025, year =>
+        Parallel.For(21, 25, year =>
         {
-            string path = $"surveys/{year}.csv";
+            string path = $"surveys/20{year}.csv";
             Console.WriteLine($"Reading survey {path}");
             using var reader = new StreamReader(path);
             using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);

@@ -3,43 +3,51 @@ using System.Threading.Channels;
 using DataLoader;
 using DataLoader.Services;
 
-public class TransformerToJson : ITransformer<List<int[]>>
+public class MinimalTransformer : ITransformer<byte[]>
 {
-    public async Task<List<int[]>> TransformAsync(ChannelReader<Report> reader, CancellationToken cancellationToken)
+    public async Task<byte[]> TransformAsync(ChannelReader<Report> reader, CancellationToken cancellationToken)
     {
         var tagTypesCount = Enum
             .GetValues<TagType>()
             .Length; // todo - const
 
-        var rows = new List<int[]>();
 
         Dictionary<string, int> tagNameToId = [];
         Dictionary<string, int> CountryNameToId = [];
 
-        int GetId(Dictionary<string, int> dict, string key)
-        {
-            if (tagNameToId.TryGetValue(key, out var value))
-            {
-                return value;
-            }
-            return tagNameToId[key] = tagNameToId.Count;
-        }
+        // todo - read all reports first, order by salary, then minimize
 
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
         await foreach (var r in reader.ReadAllAsync(cancellationToken))
         {
-            var row = new int[4 + r.Tags.Count];
-            row[0] = GetId(CountryNameToId, r.Country);
-            row[1] = r.Year;
-            row[2] = r.YearsCoding;
-            row[3] = r.YearlySalaryUsd;
-            for (var i = 0; i < r.Tags.Count; i++)
+            // first 4 values for report are always fixed
+            writer.Write((byte)r.Year);
+            writer.Write((byte)r.YearsCoding);
+            writer.Write((byte)GetId(CountryNameToId, r.Country));
+            writer.Write(r.YearlySalaryUsd);
+
+            // then comes tags count
+            writer.Write((byte)r.Tags.Count);
+            // now indicies of all tags for this report
+            foreach (var tag in r.Tags)
             {
-                row[i + 4] = GetId(tagNameToId, r.Tags[i].Name);
+                writer.Write((ushort)GetId(tagNameToId, tag.Name)); // ushort
             }
-            var tagsIds = r.Tags.Select(t => GetId(tagNameToId, t.Name)).ToArray();
-            rows.Add(row);
         }
 
-        return rows;
+        Console.WriteLine(tagNameToId.Count);
+        Console.WriteLine(CountryNameToId.Count);
+
+        return stream.ToArray();
+    }
+
+    static int GetId(Dictionary<string, int> dict, string key)
+    {
+        if (dict.TryGetValue(key, out var value))
+        {
+            return value;
+        }
+        return dict[key] = dict.Count;
     }
 }

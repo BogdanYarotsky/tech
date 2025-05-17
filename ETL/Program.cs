@@ -14,7 +14,8 @@ Console.CancelKeyPress += (_, args) =>
     args.Cancel = true;
 };
 
-var processor = new Processor<List<int[]>>(new TransformerToJson());
-var rows = await processor.TransformSalaryReportsAsync(cts.Token);
-var json = JsonSerializer.Serialize(rows);
-File.WriteAllText("reports.json", json);
+var processor = Processor.Create(new MinimalTransformer());
+var output = await processor.TransformSalaryReportsAsync(cts.Token);
+File.WriteAllBytes("test.bin", output);
+
+

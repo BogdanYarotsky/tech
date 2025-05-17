@@ -8,6 +8,11 @@ public interface ITransformer<T>
     Task<T> TransformAsync(ChannelReader<Report> reader, CancellationToken cancellationToken);
 }
 
+public static class Processor
+{
+    public static Processor<T> Create<T>(ITransformer<T> transformer) => new(transformer);
+}
+
 public class Processor<T>(ITransformer<T> transformer)
 {
     private readonly ITransformer<T> transformer = transformer;
