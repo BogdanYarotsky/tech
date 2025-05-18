@@ -11,8 +11,14 @@ type Report = {
   tagsIds: Set<number>;
 };
 
+type Tag = {
+  type: number;
+  name: string;
+};
+
 function App() {
   const [reports, setReports] = useState<Report[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
 
   const [count, setCount] = useState(0);
