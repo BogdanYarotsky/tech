@@ -19,20 +19,23 @@ public class MinimalTransformer : ITransformer<byte[]>
 
         using var stream = new MemoryStream();
         using var writer = new BinaryWriter(stream);
-        await foreach (var r in reader.ReadAllAsync(cancellationToken))
+        checked
         {
-            // first 4 values for report are always fixed
-            writer.Write((byte)r.Year);
-            writer.Write((byte)r.YearsCoding);
-            writer.Write((byte)GetId(CountryNameToId, r.Country));
-            writer.Write(r.YearlySalaryUsd);
-
-            // then comes tags count
-            writer.Write((byte)r.Tags.Count);
-            // now indicies of all tags for this report
-            foreach (var tag in r.Tags)
+            await foreach (var r in reader.ReadAllAsync(cancellationToken))
             {
-                writer.Write((ushort)GetId(tagNameToId, tag.Name)); // ushort
+                // first 4 values for report are always fixed
+                writer.Write((byte)r.Year);
+                writer.Write((byte)r.YearsCoding);
+                writer.Write((byte)GetId(CountryNameToId, r.Country));
+                writer.Write(r.YearlySalaryUsd);
+
+                // then comes tags count
+                writer.Write((ushort)r.Tags.Count);
+                // now indicies of all tags for this report
+                foreach (var tag in r.Tags)
+                {
+                    writer.Write((ushort)GetId(tagNameToId, tag.Name)); // ushort
+                }
             }
         }
 
